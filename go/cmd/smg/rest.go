@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/defuyun/mini-scheduler/internal/shards"
 	"github.com/defuyun/mini-scheduler/internal/smg"
 	"github.com/defuyun/mini-scheduler/internal/utils"
 )
@@ -19,9 +20,25 @@ func (s *RestServer) getShardManagerInfo(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(shardManagerInfo)
 }
 
+func (s *RestServer) putShardPlan(w http.ResponseWriter, r *http.Request) {
+	var shardPlan shards.ShardPlan
+	err := json.NewDecoder(r.Body).Decode(&shardPlan)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = s.shardManager.PutShardPlan(r.Context(), shardPlan)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (s *RestServer) routes() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/shard-manager", s.getShardManagerInfo)
+	mux.HandleFunc("GET /info", s.getShardManagerInfo)
+	mux.HandleFunc("POST /plan", s.putShardPlan)
 	return mux
 }
 

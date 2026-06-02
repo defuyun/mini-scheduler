@@ -7,7 +7,6 @@ type ShardPlan struct {
 
 func NewShardPlan(shardCounts int) *ShardPlan {
 	return &ShardPlan{
-		ShardCounts: shardCounts,
-		Shards:      make(map[uint64]*Shard),
+		Shards: make(map[uint64]*Shard),
 	}
 }

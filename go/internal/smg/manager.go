@@ -2,10 +2,12 @@ package smg
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"strings"
 
 	etcdProvider "github.com/defuyun/mini-scheduler/internal/etcd"
+	"github.com/defuyun/mini-scheduler/internal/shards"
 	"github.com/defuyun/mini-scheduler/internal/utils"
 )
 
@@ -19,6 +21,7 @@ type IShardManager interface {
 	WatchEvents(ctx context.Context) error
 	Shutdown(ctx context.Context) error
 	GetShardManagerInfo() ShardManagerInfo
+	PutShardPlan(ctx context.Context, shardPlan shards.ShardPlan) error
 }
 
 type ShardManager struct {
@@ -80,6 +83,14 @@ func (m *ShardManager) WatchEvents(ctx context.Context) error {
 
 func (m *ShardManager) GetShardManagerInfo() ShardManagerInfo {
 	return m.shardManagerInfo
+}
+
+func (m *ShardManager) PutShardPlan(ctx context.Context, shardPlan shards.ShardPlan) error {
+	shardPlanJSON, err := json.Marshal(shardPlan)
+	if err != nil {
+		return err
+	}
+	return m.etcdProvider.Put(ctx, utils.GetShardPlanKey(m.shardManagerInfo.ServiceName), string(shardPlanJSON))
 }
 
 func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etcdProvider etcdProvider.IEtcdProvider, smgContext *ShardManagerContext) IShardManager {

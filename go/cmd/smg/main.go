@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -26,8 +27,8 @@ func main() {
 	}
 
 	shardManagerContext := &smg.ShardManagerContext{
-		Workers: make(map[string]worker.WorkerInfo),
-		Shards:  make(map[string]shards.Shard),
+		Workers:   make(map[string]worker.WorkerInfo),
+		ShardPlan: atomic.Pointer[shards.ShardPlan]{},
 	}
 
 	shardManager := smg.NewShardManager(ctx, shardManagerInfo, etcdProvider, shardManagerContext)
