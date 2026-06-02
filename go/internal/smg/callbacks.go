@@ -56,3 +56,18 @@ func (m *ShardManager) onShardPlanChanged(ctx context.Context, smgContext *Shard
 	}
 	return nil
 }
+
+func (m *ShardManager) onRoutingPlanChanged(ctx context.Context, smgContext *ShardManagerContext, event Event) error {
+	switch event.EventType {
+	case RoutingPlanUpdated:
+		var routingPlan shards.RoutingPlan
+		err := json.Unmarshal([]byte(event.Data.(string)), &routingPlan)
+		if err != nil {
+			log.Printf("failed to unmarshal routing plan: %v", err)
+			return err
+		}
+		m.routingPlan.Store(&routingPlan)
+		return nil
+	}
+	return nil
+}

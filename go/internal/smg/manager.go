@@ -29,6 +29,7 @@ type ShardManager struct {
 	shardManagerInfo ShardManagerInfo
 	etcdProvider     etcdProvider.IEtcdProvider
 	smgContext       atomic.Pointer[ShardManagerContext]
+	routingPlan      atomic.Pointer[shards.RoutingPlan]
 	eventQueues      map[EventType]*EventQueue
 }
 
@@ -52,6 +53,7 @@ func (m *ShardManager) WatchEvents(ctx context.Context) error {
 	serviceKey := utils.GetServiceKey(m.shardManagerInfo.ServiceName)
 	workerKeyPrefix := utils.GetWorkerKey(m.shardManagerInfo.ServiceName, "")
 	shardPlanKeyPrefix := utils.GetShardPlanKey(m.shardManagerInfo.ServiceName)
+	routingPlanKeyPrefix := utils.GetRoutingPlanKey(m.shardManagerInfo.ServiceName)
 
 	ch, err := m.etcdProvider.WatchByPrefix(ctx, serviceKey)
 	if err != nil {
@@ -76,6 +78,10 @@ func (m *ShardManager) WatchEvents(ctx context.Context) error {
 			if event.Value != "" {
 				m.eventQueues[ShardPlanUpdated].Enqueue(ctx, Event{EventType: ShardPlanUpdated, Data: event.Value})
 			}
+		case strings.HasPrefix(event.Key, routingPlanKeyPrefix):
+			if event.Value != "" {
+				m.eventQueues[RoutingPlanUpdated].Enqueue(ctx, Event{EventType: RoutingPlanUpdated, Data: event.Value})
+			}
 		}
 	}
 
@@ -97,6 +103,7 @@ func (m *ShardManager) PutShardPlan(ctx context.Context, shardPlan shards.ShardP
 func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etcdProvider etcdProvider.IEtcdProvider) IShardManager {
 	eventQueues := make(map[EventType]*EventQueue)
 	smgContext := NewShardManagerContext()
+	routingPlan := shards.NewRoutingPlan()
 
 	shardManager := &ShardManager{
 		shardManagerInfo: shardManagerInfo,
@@ -105,6 +112,7 @@ func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etc
 	}
 
 	shardManager.smgContext.Store(smgContext)
+	shardManager.routingPlan.Store(routingPlan)
 
 	workerEventQueue := NewEventQueue(shardManager.onWorkerChanged, smgContext)
 	workerEventQueue.Start(ctx)
@@ -112,7 +120,12 @@ func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etc
 	shardPlanEventQueue := NewEventQueue(shardManager.onShardPlanChanged, smgContext)
 	shardPlanEventQueue.Start(ctx)
 
+	routingPlanEventQueue := NewEventQueue(shardManager.onRoutingPlanChanged, smgContext)
+	routingPlanEventQueue.Start(ctx)
+
 	eventQueues[WorkerEvent] = workerEventQueue
 	eventQueues[ShardPlanUpdated] = shardPlanEventQueue
+	eventQueues[RoutingPlanUpdated] = routingPlanEventQueue
+
 	return shardManager
 }
