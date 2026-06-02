@@ -8,12 +8,11 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-const MAX_SHARD_DEPTH = 64
-
 type Shard struct {
 	ShardID    ulid.ULID `json:"shard_id"`
 	Prefix     uint64    `json:"prefix"`
 	LocalDepth int       `json:"local_depth"`
+	Replica    int       `json:"replica"`
 }
 
 func (s *Shard) Covers(hashValue uint64) bool {
@@ -34,8 +33,8 @@ func NewShard(prefix uint64, localDepth int) *Shard {
 	}
 }
 
-func (s *Shard) Split() (*Shard, *Shard, error) {
-	if s.LocalDepth >= MAX_SHARD_DEPTH {
+func (s *Shard) Split(maximumShardDepth int) (*Shard, *Shard, error) {
+	if s.LocalDepth >= maximumShardDepth {
 		return nil, nil, errors.New("shard depth is at maximum depth")
 	}
 

@@ -8,8 +8,10 @@ import (
 	"syscall"
 
 	"github.com/defuyun/mini-scheduler/internal/etcd"
+	"github.com/defuyun/mini-scheduler/internal/shards"
 	"github.com/defuyun/mini-scheduler/internal/smg"
 	"github.com/defuyun/mini-scheduler/internal/utils"
+	"github.com/defuyun/mini-scheduler/internal/worker"
 )
 
 func main() {
@@ -31,7 +33,13 @@ func main() {
 		ServiceName:  utils.GetServiceName(),
 		EtcdEndpoint: utils.GetEtcdEndpoint(),
 	}
-	shardManager := smg.NewShardManager(shardManagerInfo, etcdProvider)
+
+	shardManagerContext := &smg.ShardManagerContext{
+		Workers: make(map[string]worker.WorkerInfo),
+		Shards:  make(map[string]shards.Shard),
+	}
+
+	shardManager := smg.NewShardManager(ctx, shardManagerInfo, etcdProvider, shardManagerContext)
 	shardManager.Join(ctx)
 
 	go func() {

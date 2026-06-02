@@ -2,13 +2,11 @@ package smg
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"strings"
 
 	etcdProvider "github.com/defuyun/mini-scheduler/internal/etcd"
 	"github.com/defuyun/mini-scheduler/internal/utils"
-	"github.com/defuyun/mini-scheduler/internal/worker"
 )
 
 type ShardManagerInfo struct {
@@ -25,6 +23,8 @@ type IShardManager interface {
 type ShardManager struct {
 	shardManagerInfo ShardManagerInfo
 	etcdProvider     etcdProvider.IEtcdProvider
+	smgContext       *ShardManagerContext
+	eventQueues      map[EventType]*EventQueue
 }
 
 func (m *ShardManager) Join(ctx context.Context) error {
@@ -58,16 +58,10 @@ func (m *ShardManager) WatchEvents(ctx context.Context) error {
 		switch {
 		case strings.HasPrefix(event.Key, workerKeyPrefix):
 			if event.Value == "" {
-				log.Printf("worker %s left", event.Key)
-				continue
+				m.eventQueues[WorkerEvent].Enqueue(ctx, Event{EventType: WorkerLeft, Data: event.Key})
+			} else {
+				m.eventQueues[WorkerEvent].Enqueue(ctx, Event{EventType: WorkerJoined, Data: event.Value})
 			}
-
-			var workerInfo worker.WorkerInfo
-			err := json.Unmarshal([]byte(event.Value), &workerInfo)
-			if err != nil {
-				log.Printf("failed to unmarshal worker info: %v", err)
-			}
-			log.Printf("worker %s joined", workerInfo.WorkerID)
 		}
 	}
 
@@ -78,9 +72,18 @@ func (m *ShardManager) GetShardManagerInfo() ShardManagerInfo {
 	return m.shardManagerInfo
 }
 
-func NewShardManager(shardManagerInfo ShardManagerInfo, etcdProvider etcdProvider.IEtcdProvider) IShardManager {
-	return &ShardManager{
+func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etcdProvider etcdProvider.IEtcdProvider, smgContext *ShardManagerContext) IShardManager {
+	eventQueues := make(map[EventType]*EventQueue)
+	shardManager := &ShardManager{
 		shardManagerInfo: shardManagerInfo,
 		etcdProvider:     etcdProvider,
+		smgContext:       smgContext,
+		eventQueues:      eventQueues,
 	}
+
+	workerEventQueue := NewEventQueue(shardManager.onWorkerJoined, smgContext)
+	workerEventQueue.Start(ctx)
+
+	eventQueues[WorkerEvent] = workerEventQueue
+	return shardManager
 }
