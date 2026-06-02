@@ -157,7 +157,10 @@ func (p *EtcdProvider) Lease(ctx context.Context, key string, ttl int64) (bool, 
 		defer func() {
 			revokeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			_, _ = p.client.Revoke(revokeCtx, grant.ID)
+			_, err = p.client.Revoke(revokeCtx, grant.ID)
+			if err != nil {
+				log.Printf("failed to revoke lease: %v", err)
+			}
 		}()
 		for {
 			select {
@@ -179,7 +182,6 @@ func (p *EtcdProvider) Resign(ctx context.Context) error {
 		return nil
 	}
 	_, err := p.client.Revoke(ctx, p.leaseID)
-	log.Printf("revoked lease: %v", err)
 	p.leaseID = 0
 	return err
 }

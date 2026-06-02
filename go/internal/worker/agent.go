@@ -88,7 +88,7 @@ func (w *WorkerAgent) WatchShards(ctx context.Context) error {
 }
 
 func (w *WorkerAgent) Shutdown(ctx context.Context) error {
-	return w.etcdProvider.Resign(ctx)
+	return nil
 }
 
 func (w *WorkerAgent) GetWorkerInfo() WorkerInfo {
