@@ -1,0 +1,14 @@
+[project]
+name = "python"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "etcd3>=0.12.0",
+    "fastapi>=0.136.3",
+    "msgpack>=1.1.2",
+    "protobuf<4",
+    "python-ulid>=3.1.0",
+    "uvicorn>=0.48.0",
+]

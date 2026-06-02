@@ -118,6 +118,7 @@ func (p *EtcdProvider) WatchByPrefix(ctx context.Context, prefix string) (chan N
 				select {
 				case ch <- node:
 				case <-ctx.Done():
+					ch <- Node{Key: "SMG_STOP", Value: ""}
 					return
 				}
 			}

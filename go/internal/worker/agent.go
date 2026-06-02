@@ -62,6 +62,11 @@ func (w *WorkerAgent) WatchShards(ctx context.Context) error {
 	}
 
 	for shard := range ch {
+		if shard.Key == "SMG_STOP" {
+			log.Println("shards watch stopped")
+			return nil
+		}
+
 		var shardAssignments []shards.Shard
 
 		if shard.Value == "" {
