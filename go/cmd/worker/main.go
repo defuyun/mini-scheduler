@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/defuyun/mini-scheduler/internal/constants"
 	"github.com/defuyun/mini-scheduler/internal/etcd"
 	"github.com/defuyun/mini-scheduler/internal/utils"
 	"github.com/defuyun/mini-scheduler/internal/worker"
@@ -17,8 +18,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	serviceName := utils.GetServiceName()
+	workerID := utils.NewULID()
+
 	etcdProvider := etcd.NewEtcdProvider(ctx, utils.GetEtcdEndpoint())
-	lease, err := etcdProvider.Lease(ctx, utils.GetServiceName(), 10)
+	lease, err := etcdProvider.Lease(ctx, constants.GetWorkerKey(serviceName, workerID), 10)
 
 	if err != nil {
 		log.Fatalf("failed to lease: %v", err)
@@ -29,9 +33,6 @@ func main() {
 		log.Fatalf("failed to lease")
 		panic("failed to lease")
 	}
-
-	serviceName := utils.GetServiceName()
-	workerID := utils.NewULID()
 
 	workerInfo := worker.WorkerInfo{
 		ServiceName: serviceName,

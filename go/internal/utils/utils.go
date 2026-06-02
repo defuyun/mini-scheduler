@@ -25,7 +25,7 @@ func NewULID() string {
 }
 
 func GetWorkerEndpoint() string {
-	return getEnv("SMG_ENDPOINT", "127.0.0.1:8000")
+	return getEnv("SMG_WORKER_ENDPOINT", "127.0.0.1:8000")
 }
 
 func GetEtcdEndpoint() string {
@@ -34,4 +34,8 @@ func GetEtcdEndpoint() string {
 
 func GetServiceName() string {
 	return getEnv("SMG_SERVICE_NAME", "app")
+}
+
+func GetShardManagerEndpoint() string {
+	return getEnv("SMG_ENDPOINT", "127.0.0.1:8001")
 }
