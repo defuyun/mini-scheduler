@@ -51,7 +51,7 @@ func (m *ShardManager) onShardPlanChanged(ctx context.Context, smgContext *Shard
 			log.Printf("failed to unmarshal shard plan: %v", err)
 			return err
 		}
-		smgContext.ShardPlan.Store(&shardPlan)
+		smgContext.ShardPlan = shardPlan
 		return nil
 	}
 	return nil

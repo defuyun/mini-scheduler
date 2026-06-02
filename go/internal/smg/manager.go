@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"sync/atomic"
 
 	etcdProvider "github.com/defuyun/mini-scheduler/internal/etcd"
 	"github.com/defuyun/mini-scheduler/internal/shards"
@@ -27,7 +28,7 @@ type IShardManager interface {
 type ShardManager struct {
 	shardManagerInfo ShardManagerInfo
 	etcdProvider     etcdProvider.IEtcdProvider
-	smgContext       *ShardManagerContext
+	smgContext       atomic.Pointer[ShardManagerContext]
 	eventQueues      map[EventType]*EventQueue
 }
 
@@ -93,18 +94,25 @@ func (m *ShardManager) PutShardPlan(ctx context.Context, shardPlan shards.ShardP
 	return m.etcdProvider.Put(ctx, utils.GetShardPlanKey(m.shardManagerInfo.ServiceName), string(shardPlanJSON))
 }
 
-func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etcdProvider etcdProvider.IEtcdProvider, smgContext *ShardManagerContext) IShardManager {
+func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etcdProvider etcdProvider.IEtcdProvider) IShardManager {
 	eventQueues := make(map[EventType]*EventQueue)
+	smgContext := NewShardManagerContext()
+
 	shardManager := &ShardManager{
 		shardManagerInfo: shardManagerInfo,
 		etcdProvider:     etcdProvider,
-		smgContext:       smgContext,
 		eventQueues:      eventQueues,
 	}
+
+	shardManager.smgContext.Store(smgContext)
 
 	workerEventQueue := NewEventQueue(shardManager.onWorkerChanged, smgContext)
 	workerEventQueue.Start(ctx)
 
+	shardPlanEventQueue := NewEventQueue(shardManager.onShardPlanChanged, smgContext)
+	shardPlanEventQueue.Start(ctx)
+
 	eventQueues[WorkerEvent] = workerEventQueue
+	eventQueues[ShardPlanUpdated] = shardPlanEventQueue
 	return shardManager
 }
