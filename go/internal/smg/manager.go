@@ -17,6 +17,7 @@ type ShardManagerInfo struct {
 type IShardManager interface {
 	Join(ctx context.Context) error
 	WatchEvents(ctx context.Context) error
+	Shutdown(ctx context.Context) error
 	GetShardManagerInfo() ShardManagerInfo
 }
 
@@ -37,6 +38,10 @@ func (m *ShardManager) Join(ctx context.Context) error {
 		panic("failed to lease")
 	}
 	return nil
+}
+
+func (m *ShardManager) Shutdown(ctx context.Context) error {
+	return m.etcdProvider.Resign(ctx)
 }
 
 func (m *ShardManager) WatchEvents(ctx context.Context) error {

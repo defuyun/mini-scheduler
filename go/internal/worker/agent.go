@@ -3,19 +3,19 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log"
 	"sync/atomic"
 
 	etcdProvider "github.com/defuyun/mini-scheduler/internal/etcd"
 	shards "github.com/defuyun/mini-scheduler/internal/shards"
+	"github.com/defuyun/mini-scheduler/internal/utils"
 )
 
 /*
 When a worker starts up it will create a key in etcd with the worker's ID. worker id will be the pod name
 */
 
-const SMG_KEY_PREFIX = "/mini-scheduler"
 const WORKER_LEASE_TTL_S = 10
 
 type IWorkerAgent interface {
@@ -37,7 +37,17 @@ type WorkerAgent struct {
 }
 
 func (w *WorkerAgent) Join(ctx context.Context) error {
-	workerKey := fmt.Sprintf("%s/%s/%s/%s", SMG_KEY_PREFIX, w.workerInfo.ServiceName, "worker", w.workerInfo.WorkerID)
+	workerKey := utils.GetWorkerKey(w.workerInfo.ServiceName, w.workerInfo.WorkerID)
+	lease, err := w.etcdProvider.Lease(ctx, workerKey, 10)
+	if err != nil {
+		log.Printf("failed to lease worker key: %v", err)
+		return err
+	}
+	if !lease {
+		log.Printf("failed to lease worker key")
+		return errors.New("failed to lease worker key")
+	}
+
 	workerInfoJSON, err := json.Marshal(w.workerInfo)
 	if err != nil {
 		log.Printf("failed to marshal worker info: %v", err)
@@ -54,7 +64,7 @@ func (w *WorkerAgent) Join(ctx context.Context) error {
 }
 
 func (w *WorkerAgent) WatchShards(ctx context.Context) error {
-	workerShardsKey := fmt.Sprintf("%s/%s/%s/%s/%s", SMG_KEY_PREFIX, w.workerInfo.ServiceName, "worker", w.workerInfo.WorkerID, "shards")
+	workerShardsKey := utils.GetWorkerShardsKey(w.workerInfo.ServiceName, w.workerInfo.WorkerID)
 	ch, err := w.etcdProvider.WatchByPrefix(ctx, workerShardsKey)
 	if err != nil {
 		log.Printf("failed to watch shards: %v", err)
@@ -88,7 +98,7 @@ func (w *WorkerAgent) WatchShards(ctx context.Context) error {
 }
 
 func (w *WorkerAgent) Shutdown(ctx context.Context) error {
-	return nil
+	return w.etcdProvider.Resign(ctx)
 }
 
 func (w *WorkerAgent) GetWorkerInfo() WorkerInfo {

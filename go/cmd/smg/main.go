@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/defuyun/mini-scheduler/internal/etcd"
 	"github.com/defuyun/mini-scheduler/internal/shards"
@@ -19,16 +20,6 @@ func main() {
 	defer stop()
 
 	etcdProvider := etcd.NewEtcdProvider(ctx, utils.GetEtcdEndpoint())
-	lease, err := etcdProvider.Lease(ctx, utils.GetServiceName(), 10)
-	if err != nil {
-		log.Fatalf("failed to lease: %v", err)
-		panic(err)
-	}
-	if !lease {
-		log.Fatalf("failed to lease")
-		panic("failed to lease")
-	}
-
 	shardManagerInfo := smg.ShardManagerInfo{
 		ServiceName:  utils.GetServiceName(),
 		EtcdEndpoint: utils.GetEtcdEndpoint(),
@@ -40,7 +31,11 @@ func main() {
 	}
 
 	shardManager := smg.NewShardManager(ctx, shardManagerInfo, etcdProvider, shardManagerContext)
-	shardManager.Join(ctx)
+	err := shardManager.Join(ctx)
+	if err != nil {
+		log.Fatalf("failed to join shard manager: %v", err)
+		panic(err)
+	}
 
 	go func() {
 		err := shardManager.WatchEvents(ctx)
@@ -55,4 +50,8 @@ func main() {
 	if err != nil && err != http.ErrServerClosed {
 		log.Printf("failed to start rest server: %v", err)
 	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	shardManager.Shutdown(shutdownCtx)
 }

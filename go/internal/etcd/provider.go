@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -154,14 +153,6 @@ func (p *EtcdProvider) Lease(ctx context.Context, key string, ttl int64) (bool, 
 
 	p.leaseID = grant.ID
 	go func() {
-		defer func() {
-			revokeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_, err = p.client.Revoke(revokeCtx, grant.ID)
-			if err != nil {
-				log.Printf("failed to revoke lease: %v", err)
-			}
-		}()
 		for {
 			select {
 			case _, ok := <-keepAlive:
