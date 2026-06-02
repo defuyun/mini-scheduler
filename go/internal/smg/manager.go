@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/defuyun/mini-scheduler/internal/constants"
 	etcdProvider "github.com/defuyun/mini-scheduler/internal/etcd"
+	"github.com/defuyun/mini-scheduler/internal/utils"
 	"github.com/defuyun/mini-scheduler/internal/worker"
 )
 
@@ -28,7 +28,7 @@ type ShardManager struct {
 }
 
 func (m *ShardManager) Join(ctx context.Context) error {
-	shardManagerKey := constants.GetShardManagerKey(m.shardManagerInfo.ServiceName)
+	shardManagerKey := utils.GetShardManagerKey(m.shardManagerInfo.ServiceName)
 	lease, err := m.etcdProvider.Lease(ctx, shardManagerKey, 10)
 	if err != nil {
 		panic(err)
@@ -40,8 +40,8 @@ func (m *ShardManager) Join(ctx context.Context) error {
 }
 
 func (m *ShardManager) WatchEvents(ctx context.Context) error {
-	serviceKey := constants.GetServiceKey(m.shardManagerInfo.ServiceName)
-	workerKeyPrefix := constants.GetWorkerKey(m.shardManagerInfo.ServiceName, "")
+	serviceKey := utils.GetServiceKey(m.shardManagerInfo.ServiceName)
+	workerKeyPrefix := utils.GetWorkerKey(m.shardManagerInfo.ServiceName, "")
 
 	ch, err := m.etcdProvider.WatchByPrefix(ctx, serviceKey)
 	if err != nil {
