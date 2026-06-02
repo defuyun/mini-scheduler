@@ -47,6 +47,7 @@ func (m *ShardManager) Shutdown(ctx context.Context) error {
 func (m *ShardManager) WatchEvents(ctx context.Context) error {
 	serviceKey := utils.GetServiceKey(m.shardManagerInfo.ServiceName)
 	workerKeyPrefix := utils.GetWorkerKey(m.shardManagerInfo.ServiceName, "")
+	shardPlanKeyPrefix := utils.GetShardPlanKey(m.shardManagerInfo.ServiceName)
 
 	ch, err := m.etcdProvider.WatchByPrefix(ctx, serviceKey)
 	if err != nil {
@@ -67,6 +68,10 @@ func (m *ShardManager) WatchEvents(ctx context.Context) error {
 			} else {
 				m.eventQueues[WorkerEvent].Enqueue(ctx, Event{EventType: WorkerJoined, Data: event.Value})
 			}
+		case strings.HasPrefix(event.Key, shardPlanKeyPrefix):
+			if event.Value != "" {
+				m.eventQueues[ShardPlanUpdated].Enqueue(ctx, Event{EventType: ShardPlanUpdated, Data: event.Value})
+			}
 		}
 	}
 
@@ -86,7 +91,7 @@ func NewShardManager(ctx context.Context, shardManagerInfo ShardManagerInfo, etc
 		eventQueues:      eventQueues,
 	}
 
-	workerEventQueue := NewEventQueue(shardManager.onWorkerJoined, smgContext)
+	workerEventQueue := NewEventQueue(shardManager.onWorkerChanged, smgContext)
 	workerEventQueue.Start(ctx)
 
 	eventQueues[WorkerEvent] = workerEventQueue

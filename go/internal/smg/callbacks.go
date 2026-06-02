@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/defuyun/mini-scheduler/internal/shards"
 	"github.com/defuyun/mini-scheduler/internal/worker"
 )
 
@@ -19,7 +20,7 @@ func getWorkerIDFromKey(key string) string {
 	return parts[len(parts)-1]
 }
 
-func (m *ShardManager) onWorkerJoined(ctx context.Context, smgContext *ShardManagerContext, event Event) error {
+func (m *ShardManager) onWorkerChanged(ctx context.Context, smgContext *ShardManagerContext, event Event) error {
 	switch event.EventType {
 	case WorkerJoined:
 		var workerInfo worker.WorkerInfo
@@ -37,6 +38,21 @@ func (m *ShardManager) onWorkerJoined(ctx context.Context, smgContext *ShardMana
 			log.Printf("worker %s left", workerID)
 			delete(smgContext.Workers, workerID)
 		}
+	}
+	return nil
+}
+
+func (m *ShardManager) onShardPlanChanged(ctx context.Context, smgContext *ShardManagerContext, event Event) error {
+	switch event.EventType {
+	case ShardPlanUpdated:
+		var shardPlan shards.ShardPlan
+		err := json.Unmarshal([]byte(event.Data.(string)), &shardPlan)
+		if err != nil {
+			log.Printf("failed to unmarshal shard plan: %v", err)
+			return err
+		}
+		smgContext.ShardPlan.Store(&shardPlan)
+		return nil
 	}
 	return nil
 }

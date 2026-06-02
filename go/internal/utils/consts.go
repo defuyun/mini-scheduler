@@ -19,3 +19,7 @@ func GetWorkerKey(serviceName string, workerID string) string {
 func GetWorkerShardsKey(serviceName string, workerID string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", SMG_KEY_PREFIX, serviceName, "worker", workerID, "shards")
 }
+
+func GetShardPlanKey(serviceName string) string {
+	return fmt.Sprintf("%s/%s/%s", SMG_KEY_PREFIX, serviceName, "shardplan")
+}

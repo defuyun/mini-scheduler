@@ -5,20 +5,6 @@ import (
 	"log"
 )
 
-type EventType string
-type EventCallback func(ctx context.Context, smgContext *ShardManagerContext, event Event) error
-
-const (
-	WorkerEvent  EventType = "worker"
-	WorkerJoined EventType = "worker_joined"
-	WorkerLeft   EventType = "worker_left"
-)
-
-type Event struct {
-	EventType EventType
-	Data      interface{}
-}
-
 type EventQueue struct {
 	events     chan Event
 	callback   EventCallback
